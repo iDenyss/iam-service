@@ -7,6 +7,6 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
   await app.listen(process.env.PORT || 3000);
-  console.log(`Servicio IAM corriendo en: http://localhost:${process.env.PORT || 3000}`);
+  console.log(`Servicio IAM corriendo en: http://localhost:${process.env.PORT || 4002}`);
 }
 bootstrap();
