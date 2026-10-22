@@ -1,57 +1,97 @@
 // src/database/schema.ts
-import { pgTable, uuid, text, timestamp, primaryKey } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, timestamp, boolean, primaryKey } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
-// 1. Entidad: Users (Auth & Credentials)
+// 1. USUARIOS
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
   email: text('email').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
   fullName: text('full_name').notNull(),
+  isActive: boolean('is_active').default(true).notNull(), // <-- Control de habilitación/deshabilitación
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-// 2. Entidad: Roles (ej. ADMIN, OPERATOR, VIEWER)
+// 2. ROLES
 export const roles = pgTable('roles', {
   id: uuid('id').defaultRandom().primaryKey(),
-  name: text('name').notNull().unique(),
+  name: text('name').notNull().unique(), // ej: 'ADMIN', 'OPERATOR', 'VIEWER'
   description: text('description'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
-// 3. Entidad: Permissions (ej. automations:run, plugins:upload)
+// 3. PERMISOS
 export const permissions = pgTable('permissions', {
   id: uuid('id').defaultRandom().primaryKey(),
-  slug: text('slug').notNull().unique(),
+  slug: text('slug').notNull().unique(), // ej: 'plugins:execute', 'users:delete'
   description: text('description'),
 });
 
-// 4. Relación Muchos a Muchos: Users <-> Roles
+// 4. TABLA PIVOTE: USUARIOS A ROLES (N:M)
 export const usersToRoles = pgTable('users_to_roles', {
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-  roleId: uuid('role_id').references(() => roles.id, { onDelete: 'cascade' }).notNull(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  roleId: uuid('role_id').notNull().references(() => roles.id, { onDelete: 'cascade' }),
 }, (t) => ({
   pk: primaryKey({ columns: [t.userId, t.roleId] }),
 }));
 
-// 5. Relación Muchos a Muchos: Roles <-> Permissions
+// 5. TABLA PIVOTE: ROLES A PERMISOS (N:M)
 export const rolesToPermissions = pgTable('roles_to_permissions', {
-  roleId: uuid('role_id').references(() => roles.id, { onDelete: 'cascade' }).notNull(),
-  permissionId: uuid('permission_id').references(() => permissions.id, { onDelete: 'cascade' }).notNull(),
+  roleId: uuid('role_id').notNull().references(() => roles.id, { onDelete: 'cascade' }),
+  permissionId: uuid('permission_id').notNull().references(() => permissions.id, { onDelete: 'cascade' }),
 }, (t) => ({
   pk: primaryKey({ columns: [t.roleId, t.permissionId] }),
 }));
 
-// Configuración de relaciones para consultas Drizzle
+// 6. GRUPOS DE TRABAJO (WORKGROUPS)
+export const workgroups = pgTable('workgroups', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// 7. TABLA PIVOTE: USUARIOS A GRUPOS DE TRABAJO (N:M)
+export const usersToWorkgroups = pgTable('users_to_workgroups', {
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  workgroupId: uuid('workgroup_id').notNull().references(() => workgroups.id, { onDelete: 'cascade' }),
+  joinedAt: timestamp('joined_at').defaultNow().notNull(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.userId, t.workgroupId] }),
+}));
+
+// RELACIONES DRIZZLE (Permiten consultas con 'with')
 export const usersRelations = relations(users, ({ many }) => ({
-  roles: many(usersToRoles),
+  usersToRoles: many(usersToRoles),
+  usersToWorkgroups: many(usersToWorkgroups),
 }));
 
 export const rolesRelations = relations(roles, ({ many }) => ({
-  users: many(usersToRoles),
-  permissions: many(rolesToPermissions),
+  usersToRoles: many(usersToRoles),
+  rolesToPermissions: many(rolesToPermissions),
+}));
+
+export const usersToRolesRelations = relations(usersToRoles, ({ one }) => ({
+  user: one(users, { fields: [usersToRoles.userId], references: [users.id] }),
+  role: one(roles, { fields: [usersToRoles.roleId], references: [roles.id] }),
 }));
 
 export const permissionsRelations = relations(permissions, ({ many }) => ({
-  roles: many(rolesToPermissions),
+  rolesToPermissions: many(rolesToPermissions),
+}));
+
+export const rolesToPermissionsRelations = relations(rolesToPermissions, ({ one }) => ({
+  role: one(roles, { fields: [rolesToPermissions.roleId], references: [roles.id] }),
+  permission: one(permissions, { fields: [rolesToPermissions.permissionId], references: [permissions.id] }),
+}));
+
+export const workgroupsRelations = relations(workgroups, ({ many }) => ({
+  usersToWorkgroups: many(usersToWorkgroups),
+}));
+
+export const usersToWorkgroupsRelations = relations(usersToWorkgroups, ({ one }) => ({
+  user: one(users, { fields: [usersToWorkgroups.userId], references: [users.id] }),
+  workgroup: one(workgroups, { fields: [usersToWorkgroups.workgroupId], references: [workgroups.id] }),
 }));
