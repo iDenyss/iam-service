@@ -1,0 +1,30 @@
+#Permisos - permisos para los roles
+
+- Crear workspace
+- Invitar miembros a workspace
+- Gestionar miembros de workspace
+- Listar workspace
+- Editar workspace
+- Deshabilitar workspace
+- Eliminar workspace
+- Editar permisos de miembros
+- Revocar permisos de miembros
+- Asignar permisos
+- Listar permisos
+- Gestionar plan
+- Cambiar medios de pago
+- Ver facturacion
+- Crear automatizaciones
+- Deshabilitar automatizaciones
+- Eliminar automatizaciones
+- Editar automatizaciones
+- Listar automatizaciones
+- Crear roles
+- Editar roles
+- Eliminar roles
+- Deshabilitar roles
+- Listar roles
+- Eliminar plugin
+- Añadir plugin
+- Editar plugin
+- Listar plugin
