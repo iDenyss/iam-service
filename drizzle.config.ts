@@ -9,6 +9,6 @@ export default defineConfig({
   out: './drizzle',
   dialect: 'postgresql',
   dbCredentials: {
-    url: 'postgresql://postgres:123456789@localhost:5432/iam_db',
+    url: process.env.DATABASE_URL!,
   },
 });

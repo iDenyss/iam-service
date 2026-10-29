@@ -7,6 +7,8 @@ import {
   Param,
   Get,
   Delete,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { IamService } from './iam.service';
@@ -31,6 +33,7 @@ export class IamController {
   // ==============================
 
   @Post('register')
+  @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Registrar un nuevo usuario' })
   @ApiResponse({ status: 201, description: 'Usuario registrado exitosamente' })
   @ApiResponse({ status: 400, description: 'El usuario ya existe' })
@@ -40,8 +43,14 @@ export class IamController {
 
   @Post('login')
   @ApiOperation({ summary: 'Iniciar sesión' })
-  @ApiResponse({ status: 200, description: 'Login exitoso, retorna token JWT' })
-  @ApiResponse({ status: 401, description: 'Credenciales inválidas o cuenta deshabilitada' })
+  @ApiResponse({
+    status: 200,
+    description: 'Login exitoso. Retorna { token, user: { id, email, role } }',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Credenciales inválidas o cuenta deshabilitada',
+  })
   login(@Body() dto: LoginDto) {
     return this.iamService.login(dto);
   }

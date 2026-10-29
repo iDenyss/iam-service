@@ -35,8 +35,9 @@ export class IamService {
   // ==========================================
 
   async register(dto: RegisterDto) {
+    const email = dto.email.trim().toLowerCase();
     const existing = await this.db.query.users.findFirst({
-      where: eq(schema.users.email, dto.email),
+      where: eq(schema.users.email, email),
     });
 
     if (existing) {
@@ -48,9 +49,9 @@ export class IamService {
     const [newUser] = await this.db
       .insert(schema.users)
       .values({
-        email: dto.email,
+        email,
         passwordHash,
-        fullName: dto.fullName,
+        fullName: dto.fullName.trim(),
         isActive: true,
       })
       .returning();
@@ -65,25 +66,13 @@ export class IamService {
   }
 
   async login(dto: LoginDto) {
+    const email = dto.email.trim().toLowerCase();
     const user = await this.db.query.users.findFirst({
-      where: eq(schema.users.email, dto.email),
+      where: eq(schema.users.email, email),
       with: {
         usersToRoles: {
           with: {
-            role: {
-              with: {
-                rolesToPermissions: {
-                  with: {
-                    permission: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-        usersToPermissions: {
-          with: {
-            permission: true,
+            role: true,
           },
         },
       },
@@ -99,37 +88,30 @@ export class IamService {
       );
     }
 
-    const userRoles = user.usersToRoles?.map((ur) => ur.role.name) || [];
-
-    // Consolidar permisos directos y permisos heredados de roles (sólo activos)
-    const permissionsSet = new Set<string>();
-
-    user.usersToRoles?.forEach((ur) => {
-      if (ur.role.isActive) {
-        ur.role.rolesToPermissions?.forEach((rp) => {
-          if (rp.permission.isActive) {
-            permissionsSet.add(rp.permission.name);
-          }
-        });
-      }
-    });
-
-    user.usersToPermissions?.forEach((up) => {
-      if (up.permission.isActive) {
-        permissionsSet.add(up.permission.name);
-      }
-    });
+    const role =
+      user.usersToRoles?.find((ur) => ur.role.isActive)?.role.name ?? 'MEMBER';
 
     const payload = {
-      sub: user.id,
+      id: user.id,
       email: user.email,
+      role,
       fullName: user.fullName,
-      roles: userRoles,
-      permissions: Array.from(permissionsSet),
+      full_name: user.fullName,
     };
 
+    const token = await this.jwtService.signAsync(payload, {
+      secret: process.env.JWT_SECRET,
+      expiresIn: '24h',
+    });
+
     return {
-      access_token: await this.jwtService.signAsync(payload),
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        role,
+        fullName: user.fullName,
+      },
     };
   }
 
