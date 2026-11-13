@@ -105,7 +105,7 @@ export class IamService {
     });
 
     return {
-      token,
+      access_token: token,
       user: {
         id: user.id,
         email: user.email,
